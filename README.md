@@ -1,3 +1,7 @@
+# OLD VERSION!
+This branch is currently a test for users that may have issues with the v5 Api. 
+So far this branch is even with the master branch and will be updated when this line is gone.
+
 # homebridge-chamberlain
 
 A Homebridge plugin for Chamberlain garage door openers with MyQ.
