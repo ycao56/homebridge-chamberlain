@@ -94,7 +94,8 @@ module.exports = class {
     if (MyQDeviceId) return Promise.resolve(MyQDeviceId);
 
     return this.getDeviceList(options).then(devices => {
-      const withoutGateways = _.reject(devices, {device_type: 'hub'});
+     const withoutHubs = _.reject(devices, {device_type: 'hub'});
+     const withoutGateways = _.reject(withoutHubs, {device_type: 'ethernetgateway'});
       const ids = _.map(withoutGateways, 'serial_number');
       if (ids.length === 0)  throw new Error('No controllable devices found');
 
