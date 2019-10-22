@@ -14,13 +14,21 @@ module.exports = class {
     const {CurrentDoorState, TargetDoorState} = Characteristic;
 
     this.apiToHap = {
-      'open': CurrentDoorState.OPEN,
-      'closed': CurrentDoorState.CLOSED,
+      // Legacy Values (leaving in case this is a defect with MyQ API)
+      1: CurrentDoorState.OPEN,
+      4: CurrentDoorState.OPENING,
+      5: CurrentDoorState.CLOSING,
+      // This one is unchanged
+      2: CurrentDoorState.CLOSED,
+      // New state for OPEN
+      9: CurrentDoorState.OPEN,
+      // API no longer supports state of OPENING/CLOSING
+      0: -1
     };
 
     this.hapToApi = {
-      [TargetDoorState.OPEN]: 'open',
-      [TargetDoorState.CLOSED]: 'close'
+      [TargetDoorState.OPEN]: 1,
+      [TargetDoorState.CLOSED]: 0
     };
 
     this.hapToEnglish = {
@@ -91,9 +99,18 @@ module.exports = class {
   }
 
   getCurrentDoorState(cb) {
-    return this.api.getDeviceAttribute({name: 'door_state'})
+    return this.api.getDeviceAttribute({name: 'doorstate'})
       .then(value =>{
-        cb(null, this.apiToHap[value])  
+        let hapValue = this.apiToHap[value];
+        
+        // HACK for API changes
+        // If door is in a state of transition, make a best guess of opening/closing
+        if(hapValue === -1) {
+          // Check if target is to be open, if not assume close
+          hapValue = (this.targetDoorState === 1)? this.apiToHap[4] : this.apiToHap[5]
+        }
+
+        cb(null, hapValue);
       })
       .catch(this.getErrorHandler(cb));
   }
@@ -101,10 +118,10 @@ module.exports = class {
   setTargetDoorState(value, cb) {
     if (this.reactiveSetTargetDoorState) return cb();
 
-    const action_type = this.hapToApi[value];
+    value = this.hapToApi[value];
     this.targetDoorState = value;
 
-    return this.api.actOnDevice({action_type})
+    return this.api.setDeviceAttribute({name: 'desireddoorstate', value})
       .then(() => {
         this.poll();
         this.targetDoorState = null;
